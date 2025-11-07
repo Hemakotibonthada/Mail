@@ -1,0 +1,36 @@
+.DS_Store
+node_modules
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.production
+
+# Build files
+build/
+dist/
+.cache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Server
+server/.env
+
+# Testing
+coverage/
+
+# Misc
+.DS_Store
+Thumbs.db

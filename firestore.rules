@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Users can read their own data, admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Only admins can create new users
+      allow create: if isAdmin();
+      
+      // Users can update their own limited fields, admins can update all
+      allow update: if (isOwner(userId) && 
+                       onlyUpdating(['displayName', 'signature', 'preferences', 'lastLoginAt'])) ||
+                      isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Emails collection
+    match /emails/{emailId} {
+      // Users can only read their own emails
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      // Users can create emails (sending/receiving)
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can update their own emails
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own emails
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+    }
+    
+    // Folders collection
+    match /folders/{folderId} {
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+    }
+    
+    // Contacts collection
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
+    }
+    
+    // Settings collection
+    match /settings/{settingId} {
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow write: if isAuthenticated() && 
+                     request.resource.data.userId == request.auth.uid;
+    }
+    
+    // Attachments collection
+    match /attachments/{attachmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    // Audit logs - admin only
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only server-side writes
+    }
+    
+    // Domains collection - admin only
+    match /domains/{domainId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // Helper function to check if only specific fields are being updated
+    function onlyUpdating(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+  }
+}

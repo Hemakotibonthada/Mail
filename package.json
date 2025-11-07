@@ -1,0 +1,37 @@
+{
+  "name": "circuvent-mail",
+  "version": "1.0.0",
+  "description": "Self-hosted email system for Circuvent organization",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "cd client && npm start",
+    "build": "cd client && npm run build",
+    "install-all": "npm install && cd client && npm install && cd ../server && npm install",
+    "deploy": "firebase deploy"
+  },
+  "keywords": ["email", "mail-server", "smtp", "imap", "firebase"],
+  "author": "Circuvent",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "firebase-admin": "^12.0.0",
+    "nodemailer": "^6.9.7",
+    "mailparser": "^3.6.5",
+    "smtp-server": "^3.13.0",
+    "imap": "^0.8.19",
+    "multer": "^1.4.5-lts.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "concurrently": "^8.2.2"
+  }
+}
