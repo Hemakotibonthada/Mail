@@ -70,7 +70,7 @@ export default function Compose() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const quillRef = useRef(null);
-  const { sendEmail, saveDraft } = useEmailStore();
+  const { sendEmail, saveDraft, sendToOutbox } = useEmailStore();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(false);
@@ -228,9 +228,13 @@ export default function Compose() {
         attachments: attachments.map(a => a.id)
       };
 
-      await sendEmail(emailData);
-      toast.success('Email sent successfully!');
-      navigate('/sent');
+      // Send to outbox first (with 30-second delay before actual send)
+      await sendToOutbox(emailData);
+      toast.success('Email added to outbox. You have 30 seconds to recall it.', {
+        duration: 5000,
+        icon: '⏱️'
+      });
+      navigate('/outbox');
     } catch (error) {
       toast.error('Failed to send email');
     } finally {

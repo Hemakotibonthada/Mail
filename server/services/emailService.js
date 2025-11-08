@@ -474,4 +474,154 @@ export class EmailService {
   stripHtml(html) {
     return html?.replace(/<[^>]*>/g, '') || '';
   }
+
+  async saveToOutbox(emailData, userId) {
+    try {
+      const emailId = uuidv4();
+      const scheduledSendTime = new Date(Date.now() + 30000); // 30 seconds from now
+
+      const outboxEmail = {
+        id: emailId,
+        userId: userId,
+        to: emailData.to,
+        cc: emailData.cc || [],
+        bcc: emailData.bcc || [],
+        subject: emailData.subject || '(No Subject)',
+        body: emailData.body,
+        plainText: emailData.plainText || this.stripHtml(emailData.body),
+        attachments: emailData.attachments || [],
+        folder: 'outbox',
+        status: 'pending',
+        scheduledSendTime: admin.firestore.Timestamp.fromDate(scheduledSendTime),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+
+      await db.collection(COLLECTIONS.EMAILS).doc(emailId).set(outboxEmail);
+      
+      console.log(`✅ Email ${emailId} saved to outbox, scheduled for ${scheduledSendTime.toISOString()}`);
+      
+      return {
+        id: emailId,
+        ...outboxEmail,
+        scheduledSendTime: scheduledSendTime.toISOString()
+      };
+    } catch (error) {
+      console.error('Error saving to outbox:', error);
+      throw error;
+    }
+  }
+
+  async recallEmail(emailId, userId) {
+    try {
+      const emailRef = db.collection(COLLECTIONS.EMAILS).doc(emailId);
+      const emailDoc = await emailRef.get();
+
+      if (!emailDoc.exists) {
+        throw new Error('Email not found');
+      }
+
+      const emailData = emailDoc.data();
+
+      // Verify ownership
+      if (emailData.userId !== userId) {
+        throw new Error('Unauthorized to recall this email');
+      }
+
+      // Check if email is still in outbox
+      if (emailData.folder !== 'outbox') {
+        throw new Error('Email has already been sent and cannot be recalled');
+      }
+
+      // Check if email is still pending
+      if (emailData.status !== 'pending') {
+        throw new Error('Email is being processed and cannot be recalled');
+      }
+
+      // Move to drafts instead of deleting
+      await emailRef.update({
+        folder: 'drafts',
+        status: 'recalled',
+        recalledAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      console.log(`✅ Email ${emailId} recalled and moved to drafts`);
+
+      return {
+        id: emailId,
+        message: 'Email recalled successfully and moved to drafts'
+      };
+    } catch (error) {
+      console.error('Error recalling email:', error);
+      throw error;
+    }
+  }
+
+  async processOutbox() {
+    try {
+      const now = admin.firestore.Timestamp.now();
+      
+      // Get all pending emails in outbox that are due to be sent
+      const outboxQuery = await db.collection(COLLECTIONS.EMAILS)
+        .where('folder', '==', 'outbox')
+        .where('status', '==', 'pending')
+        .where('scheduledSendTime', '<=', now)
+        .get();
+
+      const results = [];
+
+      for (const doc of outboxQuery.docs) {
+        const emailData = doc.data();
+        const emailId = doc.id;
+
+        try {
+          // Mark as processing
+          await doc.ref.update({ status: 'processing' });
+
+          // Send the email
+          const sendResult = await this.sendEmail({
+            to: emailData.to,
+            cc: emailData.cc,
+            bcc: emailData.bcc,
+            subject: emailData.subject,
+            body: emailData.body,
+            plainText: emailData.plainText,
+            attachments: emailData.attachments
+          }, emailData.userId);
+
+          // Move to sent folder
+          await doc.ref.update({
+            folder: 'sent',
+            status: 'sent',
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            messageId: sendResult.messageId
+          });
+
+          console.log(`✅ Outbox email ${emailId} sent successfully`);
+          results.push({ id: emailId, status: 'sent', success: true });
+        } catch (error) {
+          console.error(`❌ Failed to send outbox email ${emailId}:`, error.message);
+          
+          // Mark as failed
+          await doc.ref.update({
+            status: 'failed',
+            error: error.message,
+            failedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+          results.push({ id: emailId, status: 'failed', error: error.message, success: false });
+        }
+      }
+
+      console.log(`⚙️ Processed ${results.length} emails from outbox`);
+      return { processed: results.length, results };
+    } catch (error) {
+      console.error('Error processing outbox:', error);
+      throw error;
+    }
+  }
 }
+

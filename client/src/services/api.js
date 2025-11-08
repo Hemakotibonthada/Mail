@@ -41,6 +41,9 @@ export default api;
 export const emailAPI = {
   send: (data) => api.post('/emails/send', data),
   saveDraft: (data) => api.post('/emails/drafts', data),
+  saveToOutbox: (data) => api.post('/emails/outbox', data),
+  recallEmail: (id) => api.post(`/emails/${id}/recall`),
+  processOutbox: () => api.post('/emails/outbox/process'),
   getByFolder: (folder, params) => api.get(`/emails/folder/${folder}`, { params }),
   getById: (id) => api.get(`/emails/${id}`),
   update: (id, data) => api.patch(`/emails/${id}`, data),

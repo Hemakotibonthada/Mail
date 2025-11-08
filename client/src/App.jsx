@@ -11,6 +11,7 @@ import { useAuthStore } from './store/authStore';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inbox from './pages/Inbox';
+import Outbox from './pages/Outbox';
 import Compose from './pages/Compose';
 import EmailView from './pages/EmailView';
 import AdminPanel from './pages/AdminPanel';
@@ -74,6 +75,7 @@ function App() {
           >
             <Route index element={<Navigate to="/inbox" replace />} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="outbox" element={<Outbox />} />
             <Route path="sent" element={<Inbox folder="sent" />} />
             <Route path="drafts" element={<Inbox folder="drafts" />} />
             <Route path="trash" element={<Inbox folder="trash" />} />

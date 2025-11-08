@@ -164,4 +164,40 @@ router.post('/bulk', verifyFirebaseToken, async (req, res) => {
   }
 });
 
+// Save to outbox (delayed send)
+router.post('/outbox', verifyFirebaseToken, async (req, res) => {
+  try {
+    console.log('📤 Adding email to outbox from userId:', req.userId);
+    const result = await emailService.saveToOutbox(req.body, req.userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Save to outbox error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Recall email from outbox
+router.post('/:id/recall', verifyFirebaseToken, async (req, res) => {
+  try {
+    console.log(`🔄 Recalling email ${req.params.id} from outbox`);
+    const result = await emailService.recallEmail(req.params.id, req.userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Recall email error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// Process outbox (send pending emails)
+router.post('/outbox/process', verifyFirebaseToken, async (req, res) => {
+  try {
+    console.log('⚙️ Processing outbox emails');
+    const result = await emailService.processOutbox();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('❌ Process outbox error:', error.message);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

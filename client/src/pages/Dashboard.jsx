@@ -41,7 +41,8 @@ import {
   CalendarMonth,
   Contacts as ContactsIcon,
   FilterList,
-  Description
+  Description,
+  Schedule
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -54,6 +55,7 @@ const drawerWidth = 220;
 
 const menuItems = [
   { text: 'Inbox', icon: <InboxIcon />, path: '/inbox', badge: 0 },
+  { text: 'Outbox', icon: <Schedule />, path: '/outbox', badge: 0 },
   { text: 'Sent', icon: <Send />, path: '/sent' },
   { text: 'Drafts', icon: <Drafts />, path: '/drafts' },
   { text: 'Starred', icon: <Star />, path: '/starred' },

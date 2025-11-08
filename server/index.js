@@ -5,6 +5,7 @@ import compression from 'compression';
 import dotenv from 'dotenv';
 import { CircuventSMTPServer } from './services/smtpServer.js';
 import imapService from './services/imapService.js';
+import { outboxProcessor } from './services/outboxProcessor.js';
 import emailRoutes from './routes/emails.js';
 import userRoutes from './routes/users.js';
 import emailRulesRoutes from './routes/emailRules.js';
@@ -73,6 +74,10 @@ app.listen(PORT, () => {
 const smtpServer = new CircuventSMTPServer();
 smtpServer.start(2525);
 
+// Start outbox processor
+console.log('📤 Starting outbox processor...');
+outboxProcessor.start();
+
 // Start IMAP email fetching (check every 2 minutes)
 if (process.env.IMAP_HOST && process.env.IMAP_USER) {
   console.log('📡 Starting IMAP email sync...');
@@ -85,6 +90,7 @@ if (process.env.IMAP_HOST && process.env.IMAP_USER) {
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully...');
   smtpServer.stop();
+  outboxProcessor.stop();
   imapService.stopPeriodicFetch();
   imapService.disconnect();
   process.exit(0);
@@ -93,6 +99,7 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully...');
   smtpServer.stop();
+  outboxProcessor.stop();
   imapService.stopPeriodicFetch();
   imapService.disconnect();
   process.exit(0);

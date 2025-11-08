@@ -13,6 +13,7 @@ export const useEmailStore = create((set, get) => ({
   realtimeEnabled: true,
   cacheEnabled: true,
   isLoadingFromCache: false,
+  outboxEmails: [], // Emails waiting to be sent
   
   setCurrentFolder: (folder) => set({ currentFolder: folder }),
   setEmails: (emails) => set({ emails }),
@@ -223,5 +224,56 @@ export const useEmailStore = create((set, get) => ({
     return emailCache.getStats();
   },
   
-  clearError: () => set({ error: null })
+  clearError: () => set({ error: null }),
+  
+  // Outbox functions
+  sendToOutbox: async (emailData) => {
+    try {
+      set({ loading: true, error: null });
+      
+      // Add scheduled send time (30 seconds from now)
+      const scheduledSendTime = new Date(Date.now() + 30000).toISOString();
+      
+      const outboxEmail = {
+        ...emailData,
+        folder: 'outbox',
+        scheduledSendTime,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+      
+      const response = await emailAPI.saveToOutbox(outboxEmail);
+      set({ loading: false });
+      return response.data;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+  
+  recallEmail: async (emailId) => {
+    try {
+      set({ loading: true, error: null });
+      const response = await emailAPI.recallEmail(emailId);
+      
+      // Remove from local outbox
+      const emails = get().emails.filter(email => email.id !== emailId);
+      set({ emails, loading: false });
+      
+      return response.data;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+  
+  processOutbox: async () => {
+    try {
+      const response = await emailAPI.processOutbox();
+      return response.data;
+    } catch (error) {
+      console.error('Error processing outbox:', error);
+      throw error;
+    }
+  }
 }));
