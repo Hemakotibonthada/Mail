@@ -138,10 +138,25 @@ class ImapService {
 
       // Find user by email
       const usersRef = this.db.collection('users');
-      const userSnapshot = await usersRef
+      
+      // Try case-sensitive match first
+      let userSnapshot = await usersRef
         .where('email', '==', recipientEmail)
         .limit(1)
         .get();
+
+      // If not found, try case-insensitive match
+      if (userSnapshot.empty) {
+        const allUsersSnap = await usersRef.get();
+        const matchingUser = allUsersSnap.docs.find(doc => 
+          doc.data().email?.toLowerCase() === recipientEmail.toLowerCase()
+        );
+        
+        if (matchingUser) {
+          userSnapshot = { empty: false, docs: [matchingUser] };
+          console.log(`✅ Found user with case-insensitive match: ${matchingUser.data().email}`);
+        }
+      }
 
       if (userSnapshot.empty) {
         console.log(`⚠️ No user found for email: ${recipientEmail}`);

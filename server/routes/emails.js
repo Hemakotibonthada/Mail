@@ -17,10 +17,19 @@ const upload = multer({
 // Send email
 router.post('/send', verifyFirebaseToken, async (req, res) => {
   try {
+    console.log('📧 Send email request from userId:', req.userId);
+    console.log('📧 Email data:', JSON.stringify({ 
+      to: req.body.to, 
+      subject: req.body.subject,
+      hasBody: !!req.body.body 
+    }));
     const result = await emailService.sendEmail(req.body, req.userId);
-    res.json(result);
+    console.log('✅ Email sent successfully:', result);
+    res.json({ success: true, ...result });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('❌ Send email error:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(400).json({ success: false, error: error.message });
   }
 });
 
@@ -37,25 +46,41 @@ router.post('/drafts', verifyFirebaseToken, async (req, res) => {
 // Get emails by folder
 router.get('/folder/:folder', verifyFirebaseToken, async (req, res) => {
   try {
+    console.log(`📬 Fetching emails for folder: ${req.params.folder}, userId: ${req.userId}`);
     const { limit, offset, searchQuery } = req.query;
     const emails = await emailService.getEmails(req.userId, req.params.folder, {
       limit: parseInt(limit) || 50,
       offset: parseInt(offset) || 0,
       searchQuery
     });
-    res.json(emails);
+    console.log(`✅ Found ${emails.length} emails in ${req.params.folder}`);
+    res.json({ success: true, data: emails, count: emails.length });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error getting emails:', error);
+    
+    // Check if it's a missing index error
+    if (error.code === 9 || error.message?.includes('index')) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Database index is being created. Please wait 2-5 minutes and refresh.',
+        errorType: 'MISSING_INDEX',
+        indexUrl: error.message?.match(/https:\/\/[^\s]+/)?.[0]
+      });
+    }
+    
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Get single email
 router.get('/:id', verifyFirebaseToken, async (req, res) => {
   try {
+    console.log(`📧 Fetching email: ${req.params.id}`);
     const email = await emailService.getEmailById(req.params.id, req.userId);
-    res.json(email);
+    res.json({ success: true, data: email });
   } catch (error) {
-    res.status(404).json({ error: error.message });
+    console.error('Error getting email:', error);
+    res.status(404).json({ success: false, error: error.message });
   }
 });
 

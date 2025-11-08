@@ -20,14 +20,16 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  Divider
 } from '@mui/material';
 import {
   Add,
   Edit,
   Delete,
   Block,
-  CheckCircle
+  CheckCircle,
+  PersonAdd
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -132,104 +134,356 @@ export default function AdminPanel() {
   };
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Employee Management</Typography>
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box 
+        display="flex" 
+        justifyContent="space-between" 
+        alignItems="center" 
+        mb={2}
+        pb={2}
+        borderBottom="1px solid #edebe9"
+      >
+        <Box>
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 600,
+              color: '#323130',
+              mb: 0.5
+            }}
+          >
+            Employee Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Manage user accounts and permissions
+          </Typography>
+        </Box>
         <Button
           variant="contained"
-          startIcon={<Add />}
+          startIcon={<PersonAdd />}
           onClick={handleOpenDialog}
+          sx={{
+            bgcolor: '#0078d4',
+            color: 'white',
+            textTransform: 'none',
+            fontWeight: 500,
+            px: 2.5,
+            py: 1,
+            borderRadius: '2px',
+            boxShadow: 'none',
+            '&:hover': {
+              bgcolor: '#106ebe',
+              boxShadow: 'none'
+            }
+          }}
         >
           Add Employee
         </Button>
       </Box>
 
-      <Paper elevation={2}>
+      {/* Table */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          border: '1px solid #edebe9',
+          borderRadius: '2px',
+          overflow: 'hidden'
+        }}
+      >
         <TableContainer>
-          <Table>
+          <Table size="small">
             <TableHead>
-              <TableRow>
-                <TableCell>Email</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Domain</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Quota</TableCell>
-                <TableCell align="right">Actions</TableCell>
+              <TableRow sx={{ bgcolor: '#faf9f8' }}>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Email
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Name
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Domain
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Role
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Status
+                </TableCell>
+                <TableCell sx={{ 
+                  fontWeight: 600, 
+                  color: '#323130',
+                  fontSize: '0.813rem',
+                  py: 1.5,
+                  borderBottom: '1px solid #edebe9'
+                }}>
+                  Quota
+                </TableCell>
+                <TableCell 
+                  align="right"
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#323130',
+                    fontSize: '0.813rem',
+                    py: 1.5,
+                    borderBottom: '1px solid #edebe9'
+                  }}
+                >
+                  Actions
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {employees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell>{employee.email}</TableCell>
-                  <TableCell>{employee.displayName}</TableCell>
-                  <TableCell>{employee.domain}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={employee.role}
-                      color={employee.role === 'admin' ? 'primary' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={employee.isActive ? 'Active' : 'Inactive'}
-                      color={employee.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {((employee.quotaUsed || 0) / 1024 / 1024).toFixed(2)} MB / 
-                    {(employee.quotaLimit / 1024 / 1024 / 1024).toFixed(1)} GB
-                  </TableCell>
-                  <TableCell align="right">
-                    {employee.isActive ? (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeactivate(employee.id)}
-                        title="Deactivate"
-                      >
-                        <Block />
-                      </IconButton>
-                    ) : (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleReactivate(employee.id)}
-                        title="Reactivate"
-                      >
-                        <CheckCircle />
-                      </IconButton>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(employee.id)}
-                      title="Delete"
-                      color="error"
-                    >
-                      <Delete />
-                    </IconButton>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Box display="flex" justifyContent="center" alignItems="center" flexDirection="column" gap={1}>
+                      <Box 
+                        sx={{ 
+                          width: 24, 
+                          height: 24, 
+                          border: '3px solid #f3f2f1', 
+                          borderTop: '3px solid #0078d4', 
+                          borderRadius: '50%', 
+                          animation: 'spin 1s linear infinite',
+                          '@keyframes spin': {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' }
+                          }
+                        }} 
+                      />
+                      <Typography variant="body2" color="text.secondary">Loading employees...</Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : employees.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">No employees found</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                employees.map((employee) => (
+                  <TableRow 
+                    key={employee.id}
+                    sx={{
+                      '&:hover': { bgcolor: '#f3f2f1' },
+                      borderBottom: '1px solid #edebe9'
+                    }}
+                  >
+                    <TableCell sx={{ 
+                      fontSize: '0.875rem',
+                      py: 1.5,
+                      color: '#323130'
+                    }}>
+                      {employee.email}
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontSize: '0.875rem',
+                      py: 1.5,
+                      color: '#323130'
+                    }}>
+                      {employee.displayName}
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontSize: '0.875rem',
+                      py: 1.5,
+                      color: '#605e5c'
+                    }}>
+                      {employee.domain}
+                    </TableCell>
+                    <TableCell sx={{ py: 1.5 }}>
+                      <Chip
+                        label={employee.role}
+                        size="small"
+                        sx={{
+                          bgcolor: employee.role === 'admin' ? '#0078d4' : '#f3f2f1',
+                          color: employee.role === 'admin' ? 'white' : '#323130',
+                          fontWeight: 500,
+                          fontSize: '0.75rem',
+                          height: 22,
+                          borderRadius: '2px',
+                          textTransform: 'capitalize'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ py: 1.5 }}>
+                      <Chip
+                        label={employee.isActive ? 'Active' : 'Inactive'}
+                        size="small"
+                        sx={{
+                          bgcolor: employee.isActive ? '#dff6dd' : '#f3f2f1',
+                          color: employee.isActive ? '#107c10' : '#605e5c',
+                          fontWeight: 500,
+                          fontSize: '0.75rem',
+                          height: 22,
+                          borderRadius: '2px'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ 
+                      fontSize: '0.875rem',
+                      py: 1.5,
+                      color: '#605e5c'
+                    }}>
+                      {((employee.quotaUsed || 0) / 1024 / 1024).toFixed(2)} MB / 
+                      {(employee.quotaLimit / 1024 / 1024 / 1024).toFixed(1)} GB
+                    </TableCell>
+                    <TableCell align="right" sx={{ py: 1.5 }}>
+                      {employee.isActive ? (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeactivate(employee.id)}
+                          title="Deactivate"
+                          sx={{
+                            color: '#605e5c',
+                            '&:hover': {
+                              bgcolor: '#f3f2f1',
+                              color: '#323130'
+                            }
+                          }}
+                        >
+                          <Block fontSize="small" />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          size="small"
+                          onClick={() => handleReactivate(employee.id)}
+                          title="Reactivate"
+                          sx={{
+                            color: '#107c10',
+                            '&:hover': {
+                              bgcolor: '#dff6dd'
+                            }
+                          }}
+                        >
+                          <CheckCircle fontSize="small" />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDelete(employee.id)}
+                        title="Delete"
+                        sx={{
+                          color: '#605e5c',
+                          '&:hover': {
+                            bgcolor: '#fde7e9',
+                            color: '#d13438'
+                          }
+                        }}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Create New Employee</DialogTitle>
-        <DialogContent>
+      {/* Add Employee Dialog */}
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '2px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: '#faf9f8', 
+          borderBottom: '1px solid #edebe9',
+          px: 3,
+          py: 2
+        }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <PersonAdd sx={{ color: '#0078d4' }} />
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#323130' }}>
+              Create New Employee
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, py: 3 }}>
           <TextField
             fullWidth
-            label="Username (before @)"
+            label="Username"
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
             margin="normal"
             placeholder="john.doe"
             required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': {
+                  borderColor: '#0078d4'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0078d4',
+                  borderWidth: '2px'
+                }
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#0078d4'
+              }
+            }}
           />
 
-          <FormControl fullWidth margin="normal">
+          <FormControl 
+            fullWidth 
+            margin="normal"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': {
+                  borderColor: '#0078d4'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0078d4',
+                  borderWidth: '2px'
+                }
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#0078d4'
+              }
+            }}
+          >
             <InputLabel>Domain</InputLabel>
             <Select
               value={formData.domain}
@@ -241,9 +495,21 @@ export default function AdminPanel() {
             </Select>
           </FormControl>
 
-          <Typography variant="caption" color="text.secondary">
-            Email will be: {formData.email}@{formData.domain}
-          </Typography>
+          <Box 
+            sx={{ 
+              bgcolor: '#f3f2f1', 
+              p: 1.5, 
+              borderRadius: '2px',
+              mt: 1,
+              mb: 1
+            }}
+          >
+            <Typography variant="body2" sx={{ color: '#605e5c', fontWeight: 500 }}>
+              Email will be: <span style={{ color: '#0078d4', fontWeight: 600 }}>
+                {formData.email || 'username'}@{formData.domain}
+              </span>
+            </Typography>
+          </Box>
 
           <TextField
             fullWidth
@@ -252,6 +518,21 @@ export default function AdminPanel() {
             onChange={(e) => handleChange('displayName', e.target.value)}
             margin="normal"
             required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': {
+                  borderColor: '#0078d4'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0078d4',
+                  borderWidth: '2px'
+                }
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#0078d4'
+              }
+            }}
           />
 
           <TextField
@@ -263,9 +544,42 @@ export default function AdminPanel() {
             margin="normal"
             required
             helperText="Minimum 6 characters"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': {
+                  borderColor: '#0078d4'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0078d4',
+                  borderWidth: '2px'
+                }
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#0078d4'
+              }
+            }}
           />
 
-          <FormControl fullWidth margin="normal">
+          <FormControl 
+            fullWidth 
+            margin="normal"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': {
+                  borderColor: '#0078d4'
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0078d4',
+                  borderWidth: '2px'
+                }
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#0078d4'
+              }
+            }}
+          >
             <InputLabel>Role</InputLabel>
             <Select
               value={formData.role}
@@ -277,12 +591,42 @@ export default function AdminPanel() {
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#faf9f8' }}>
+          <Button 
+            onClick={handleCloseDialog}
+            sx={{
+              color: '#323130',
+              textTransform: 'none',
+              fontWeight: 500,
+              '&:hover': {
+                bgcolor: '#f3f2f1'
+              }
+            }}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleCreateEmployee}
             variant="contained"
             disabled={!formData.email || !formData.displayName || !formData.password}
+            sx={{
+              bgcolor: '#0078d4',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 3,
+              borderRadius: '2px',
+              boxShadow: 'none',
+              '&:hover': {
+                bgcolor: '#106ebe',
+                boxShadow: 'none'
+              },
+              '&:disabled': {
+                bgcolor: '#f3f2f1',
+                color: '#a19f9d'
+              }
+            }}
           >
             Create Employee
           </Button>

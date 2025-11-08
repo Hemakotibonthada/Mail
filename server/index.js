@@ -7,6 +7,9 @@ import { CircuventSMTPServer } from './services/smtpServer.js';
 import imapService from './services/imapService.js';
 import emailRoutes from './routes/emails.js';
 import userRoutes from './routes/users.js';
+import emailRulesRoutes from './routes/emailRules.js';
+import autoReplyRoutes from './routes/autoReply.js';
+import templatesRoutes from './routes/templates.js';
 
 // Load environment variables
 dotenv.config();
@@ -42,6 +45,9 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/emails', emailRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/email-rules', emailRulesRoutes);
+app.use('/api/auto-reply', autoReplyRoutes);
+app.use('/api/templates', templatesRoutes);
 
 // 404 handler
 app.use((req, res) => {

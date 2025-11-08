@@ -1,9 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getAnalytics } from 'firebase/analytics';
+import { getFirestore } from 'firebase/firestore';
+// import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBM7vV6rfZ4n8a_c4Ku3zvfJ98psf0zO-M",
+  apiKey: "AIzaSyBM7vV6rfZ4n8a_c4Ku4zvfJ98psf0zO-M",
   authDomain: "circuvent.firebaseapp.com",
   databaseURL: "https://circuvent-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "circuvent",
@@ -16,6 +17,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const analytics = getAnalytics(app);
+export const db = getFirestore(app);
+// export const analytics = getAnalytics(app);
 
 export default app;

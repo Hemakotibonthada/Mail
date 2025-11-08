@@ -15,6 +15,10 @@ import Compose from './pages/Compose';
 import EmailView from './pages/EmailView';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
+import Calendar from './pages/Calendar';
+import Contacts from './pages/Contacts';
+import EmailRules from './pages/EmailRules';
+import Templates from './pages/Templates';
 
 const theme = createTheme({
   palette: {
@@ -52,7 +56,12 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Toaster position="top-right" />
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
@@ -69,6 +78,11 @@ function App() {
             <Route path="drafts" element={<Inbox folder="drafts" />} />
             <Route path="trash" element={<Inbox folder="trash" />} />
             <Route path="spam" element={<Inbox folder="spam" />} />
+            <Route path="starred" element={<Inbox folder="starred" />} />
+            <Route path="calendar" element={<Calendar />} />
+            <Route path="contacts" element={<Contacts />} />
+            <Route path="rules" element={<EmailRules />} />
+            <Route path="templates" element={<Templates />} />
             <Route path="compose" element={<Compose />} />
             <Route path="email/:id" element={<EmailView />} />
             <Route path="admin" element={<AdminPanel />} />

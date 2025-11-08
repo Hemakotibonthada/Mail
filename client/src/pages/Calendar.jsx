@@ -1,0 +1,634 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  IconButton,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Chip,
+  Stack,
+  Divider,
+  Tooltip
+} from '@mui/material';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Today,
+  Add,
+  ViewWeek,
+  ViewDay,
+  CalendarMonth,
+  Close,
+  Edit,
+  Delete,
+  Notifications
+} from '@mui/icons-material';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
+import toast from 'react-hot-toast';
+
+export default function Calendar() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState('month'); // month, week, day
+  const [events, setEvents] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    location: '',
+    attendees: '',
+    reminder: '15',
+    color: '#0078d4'
+  });
+
+  const colors = [
+    { value: '#0078d4', label: 'Blue' },
+    { value: '#107c10', label: 'Green' },
+    { value: '#d13438', label: 'Red' },
+    { value: '#f7630c', label: 'Orange' },
+    { value: '#5c2d91', label: 'Purple' },
+    { value: '#00188f', label: 'Dark Blue' }
+  ];
+
+  // Generate calendar days
+  const generateCalendarDays = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+
+    const days = [];
+    let day = startDate;
+
+    while (day <= endDate) {
+      days.push(day);
+      day = addDays(day, 1);
+    }
+
+    return days;
+  };
+
+  const calendarDays = generateCalendarDays();
+
+  const handlePrevious = () => {
+    if (view === 'month') {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(addDays(currentDate, -7));
+    } else {
+      setCurrentDate(addDays(currentDate, -1));
+    }
+  };
+
+  const handleNext = () => {
+    if (view === 'month') {
+      setCurrentDate(addMonths(currentDate, 1));
+    } else if (view === 'week') {
+      setCurrentDate(addDays(currentDate, 7));
+    } else {
+      setCurrentDate(addDays(currentDate, 1));
+    }
+  };
+
+  const handleToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  const handleOpenDialog = (date = null) => {
+    if (date) {
+      setFormData({
+        ...formData,
+        startDate: format(date, 'yyyy-MM-dd'),
+        endDate: format(date, 'yyyy-MM-dd'),
+        startTime: '09:00',
+        endTime: '10:00'
+      });
+    }
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setFormData({
+      title: '',
+      description: '',
+      startDate: '',
+      startTime: '',
+      endDate: '',
+      endTime: '',
+      location: '',
+      attendees: '',
+      reminder: '15',
+      color: '#0078d4'
+    });
+  };
+
+  const handleCreateEvent = () => {
+    if (!formData.title || !formData.startDate) {
+      toast.error('Title and start date are required');
+      return;
+    }
+
+    const newEvent = {
+      id: Date.now(),
+      ...formData,
+      createdAt: new Date()
+    };
+
+    setEvents([...events, newEvent]);
+    toast.success('Event created successfully');
+    handleCloseDialog();
+  };
+
+  const getEventsForDate = (date) => {
+    return events.filter(event => 
+      format(new Date(event.startDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+    );
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      {/* Header */}
+      <Box 
+        display="flex" 
+        justifyContent="space-between" 
+        alignItems="center" 
+        mb={2}
+        pb={2}
+        borderBottom="1px solid #edebe9"
+      >
+        <Box display="flex" alignItems="center" gap={2}>
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 600,
+              color: '#323130'
+            }}
+          >
+            {format(currentDate, 'MMMM yyyy')}
+          </Typography>
+          
+          <Box display="flex" gap={0.5}>
+            <Tooltip title="Previous">
+              <IconButton size="small" onClick={handlePrevious} sx={{ borderRadius: 1 }}>
+                <ChevronLeft fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Today">
+              <IconButton size="small" onClick={handleToday} sx={{ borderRadius: 1 }}>
+                <Today fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Next">
+              <IconButton size="small" onClick={handleNext} sx={{ borderRadius: 1 }}>
+                <ChevronRight fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+
+        <Box display="flex" gap={1} alignItems="center">
+          {/* View Selector */}
+          <Box 
+            display="flex" 
+            sx={{ 
+              bgcolor: '#f3f2f1', 
+              borderRadius: '2px',
+              p: 0.5 
+            }}
+          >
+            <Tooltip title="Month view">
+              <IconButton 
+                size="small" 
+                onClick={() => setView('month')}
+                sx={{ 
+                  borderRadius: 1,
+                  bgcolor: view === 'month' ? 'white' : 'transparent',
+                  boxShadow: view === 'month' ? 1 : 0
+                }}
+              >
+                <CalendarMonth fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Week view">
+              <IconButton 
+                size="small" 
+                onClick={() => setView('week')}
+                sx={{ 
+                  borderRadius: 1,
+                  bgcolor: view === 'week' ? 'white' : 'transparent',
+                  boxShadow: view === 'week' ? 1 : 0
+                }}
+              >
+                <ViewWeek fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Day view">
+              <IconButton 
+                size="small" 
+                onClick={() => setView('day')}
+                sx={{ 
+                  borderRadius: 1,
+                  bgcolor: view === 'day' ? 'white' : 'transparent',
+                  boxShadow: view === 'day' ? 1 : 0
+                }}
+              >
+                <ViewDay fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+            sx={{
+              bgcolor: '#0078d4',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 2.5,
+              py: 1,
+              borderRadius: '2px',
+              boxShadow: 'none',
+              '&:hover': {
+                bgcolor: '#106ebe',
+                boxShadow: 'none'
+              }
+            }}
+          >
+            New Event
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Calendar Grid */}
+      {view === 'month' && (
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            border: '1px solid #edebe9',
+            borderRadius: '2px',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Weekday Headers */}
+          <Box 
+            display="grid" 
+            gridTemplateColumns="repeat(7, 1fr)"
+            sx={{ 
+              bgcolor: '#faf9f8',
+              borderBottom: '1px solid #edebe9'
+            }}
+          >
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <Box 
+                key={day}
+                sx={{ 
+                  p: 1.5,
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  fontSize: '0.813rem',
+                  color: '#605e5c'
+                }}
+              >
+                {day}
+              </Box>
+            ))}
+          </Box>
+
+          {/* Calendar Days */}
+          <Box 
+            display="grid" 
+            gridTemplateColumns="repeat(7, 1fr)"
+            sx={{ minHeight: '500px' }}
+          >
+            {calendarDays.map((day, index) => {
+              const dayEvents = getEventsForDate(day);
+              const isCurrentMonth = isSameMonth(day, currentDate);
+              const isTodayDate = isToday(day);
+
+              return (
+                <Box
+                  key={index}
+                  onClick={() => handleOpenDialog(day)}
+                  sx={{
+                    p: 1,
+                    minHeight: '100px',
+                    border: '1px solid #edebe9',
+                    bgcolor: !isCurrentMonth ? '#faf9f8' : 'white',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      bgcolor: '#f3f2f1'
+                    }
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: '0.875rem',
+                      fontWeight: isTodayDate ? 600 : 400,
+                      color: !isCurrentMonth ? '#a19f9d' : isTodayDate ? 'white' : '#323130',
+                      bgcolor: isTodayDate ? '#0078d4' : 'transparent',
+                      width: isTodayDate ? 28 : 'auto',
+                      height: isTodayDate ? 28 : 'auto',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mb: 0.5
+                    }}
+                  >
+                    {format(day, 'd')}
+                  </Typography>
+
+                  {/* Events */}
+                  <Box sx={{ mt: 1 }}>
+                    {dayEvents.slice(0, 3).map((event, idx) => (
+                      <Box
+                        key={idx}
+                        sx={{
+                          bgcolor: event.color,
+                          color: 'white',
+                          px: 0.5,
+                          py: 0.25,
+                          mb: 0.5,
+                          borderRadius: '2px',
+                          fontSize: '0.75rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {event.title}
+                      </Box>
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <Typography sx={{ fontSize: '0.75rem', color: '#605e5c' }}>
+                        +{dayEvents.length - 3} more
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        </Paper>
+      )}
+
+      {/* Create Event Dialog */}
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '2px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          bgcolor: '#faf9f8', 
+          borderBottom: '1px solid #edebe9',
+          px: 3,
+          py: 2
+        }}>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6" sx={{ fontWeight: 600, color: '#323130' }}>
+              New Event
+            </Typography>
+            <IconButton size="small" onClick={handleCloseDialog}>
+              <Close fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: 3, py: 3 }}>
+          <TextField
+            fullWidth
+            label="Event Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            margin="normal"
+            required
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': { borderColor: '#0078d4' },
+                '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+              },
+              '& .MuiInputLabel-root.Mui-focused': { color: '#0078d4' }
+            }}
+          />
+
+          <TextField
+            fullWidth
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            margin="normal"
+            multiline
+            rows={3}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': { borderColor: '#0078d4' },
+                '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+              }
+            }}
+          />
+
+          <Box display="flex" gap={2} mt={2}>
+            <TextField
+              label="Start Date"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '2px',
+                  '&:hover fieldset': { borderColor: '#0078d4' },
+                  '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+                }
+              }}
+            />
+            <TextField
+              label="Start Time"
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '2px',
+                  '&:hover fieldset': { borderColor: '#0078d4' },
+                  '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+                }
+              }}
+            />
+          </Box>
+
+          <Box display="flex" gap={2} mt={2}>
+            <TextField
+              label="End Date"
+              type="date"
+              value={formData.endDate}
+              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '2px',
+                  '&:hover fieldset': { borderColor: '#0078d4' },
+                  '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+                }
+              }}
+            />
+            <TextField
+              label="End Time"
+              type="time"
+              value={formData.endTime}
+              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '2px',
+                  '&:hover fieldset': { borderColor: '#0078d4' },
+                  '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+                }
+              }}
+            />
+          </Box>
+
+          <TextField
+            fullWidth
+            label="Location"
+            value={formData.location}
+            onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+            margin="normal"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': { borderColor: '#0078d4' },
+                '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+              }
+            }}
+          />
+
+          <TextField
+            fullWidth
+            label="Attendees (comma separated emails)"
+            value={formData.attendees}
+            onChange={(e) => setFormData({ ...formData, attendees: e.target.value })}
+            margin="normal"
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: '2px',
+                '&:hover fieldset': { borderColor: '#0078d4' },
+                '&.Mui-focused fieldset': { borderColor: '#0078d4', borderWidth: '2px' }
+              }
+            }}
+          />
+
+          <Box display="flex" gap={2} mt={2}>
+            <FormControl fullWidth>
+              <InputLabel>Reminder</InputLabel>
+              <Select
+                value={formData.reminder}
+                onChange={(e) => setFormData({ ...formData, reminder: e.target.value })}
+                label="Reminder"
+                sx={{
+                  borderRadius: '2px',
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#0078d4' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#0078d4', borderWidth: '2px' }
+                }}
+              >
+                <MenuItem value="0">No reminder</MenuItem>
+                <MenuItem value="5">5 minutes before</MenuItem>
+                <MenuItem value="15">15 minutes before</MenuItem>
+                <MenuItem value="30">30 minutes before</MenuItem>
+                <MenuItem value="60">1 hour before</MenuItem>
+                <MenuItem value="1440">1 day before</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Color</InputLabel>
+              <Select
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                label="Color"
+                sx={{
+                  borderRadius: '2px',
+                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#0078d4' },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#0078d4', borderWidth: '2px' }
+                }}
+              >
+                {colors.map((color) => (
+                  <MenuItem key={color.value} value={color.value}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Box sx={{ width: 20, height: 20, bgcolor: color.value, borderRadius: 1 }} />
+                      {color.label}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 2, bgcolor: '#faf9f8' }}>
+          <Button 
+            onClick={handleCloseDialog}
+            sx={{
+              color: '#323130',
+              textTransform: 'none',
+              fontWeight: 500,
+              '&:hover': { bgcolor: '#f3f2f1' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreateEvent}
+            variant="contained"
+            sx={{
+              bgcolor: '#0078d4',
+              color: 'white',
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 3,
+              borderRadius: '2px',
+              boxShadow: 'none',
+              '&:hover': {
+                bgcolor: '#106ebe',
+                boxShadow: 'none'
+              }
+            }}
+          >
+            Create Event
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}

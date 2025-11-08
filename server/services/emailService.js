@@ -6,19 +6,66 @@ import admin from 'firebase-admin';
 
 export class EmailService {
   constructor() {
-    // Create reusable transporter
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'localhost',
-      port: process.env.SMTP_PORT || 2525,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.ADMIN_EMAIL,
-        pass: process.env.ADMIN_PASSWORD
+    // Store SMTP configurations for different domains
+    this.smtpConfigs = {
+      'htresearchlab.com': {
+        host: process.env.SMTP_HOST || 'smtpout.secureserver.net',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER || process.env.ADMIN_EMAIL,
+          pass: process.env.SMTP_PASS || process.env.ADMIN_PASSWORD
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
       },
-      tls: {
-        rejectUnauthorized: false
+      'circuvent.com': {
+        host: process.env.SMTP_HOST_CIRCUVENT || process.env.SMTP_HOST || 'smtpout.secureserver.net',
+        port: parseInt(process.env.SMTP_PORT_CIRCUVENT || process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER_CIRCUVENT || process.env.ADMIN_EMAIL,
+          pass: process.env.SMTP_PASS_CIRCUVENT || process.env.ADMIN_PASSWORD
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      },
+      'ai.com': {
+        host: process.env.SMTP_HOST_AI || 'smtpout.secureserver.net',
+        port: parseInt(process.env.SMTP_PORT_AI || process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER_AI || null,
+          pass: process.env.SMTP_PASS_AI || null
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
       }
-    });
+    };
+    
+    // Default transporter (will be created per-email based on sender domain)
+    this.transporter = null;
+  }
+
+  getTransporterForDomain(domain) {
+    // Get SMTP config for the user's domain
+    let config = this.smtpConfigs[domain];
+    
+    // If domain doesn't have config or credentials are missing, use htresearchlab.com as fallback
+    if (!config || !config.auth.user || !config.auth.pass) {
+      console.log(`⚠️  No SMTP config for ${domain}, using htresearchlab.com SMTP as relay`);
+      config = this.smtpConfigs['htresearchlab.com'];
+    }
+    
+    // Final check - if still no credentials, throw error
+    if (!config.auth.user || !config.auth.pass) {
+      throw new Error(`SMTP not configured for domain: ${domain}. Please add email credentials.`);
+    }
+    
+    return nodemailer.createTransport(config);
   }
 
   async sendEmail(emailData, userId) {
@@ -27,23 +74,73 @@ export class EmailService {
 
       // Get sender info
       const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get();
-      const userData = userDoc.data();
+      let userData = userDoc.data();
 
-      if (!userData || !userData.isActive) {
-        throw new Error('User not found or inactive');
+      // If user doesn't exist in Firestore, create a basic user document
+      if (!userData) {
+        console.log(`User ${userId} not found in Firestore, creating basic user document...`);
+        
+        // Get user email from Firebase Auth
+        const userRecord = await admin.auth().getUser(userId);
+        userData = {
+          uid: userId,
+          email: userRecord.email || 'unknown@example.com',
+          displayName: userRecord.displayName || userRecord.email?.split('@')[0] || 'User',
+          domain: userRecord.email?.split('@')[1] || 'circuvent.com',
+          role: 'employee',
+          isActive: true,
+          quotaUsed: 0,
+          quotaLimit: 5368709120, // 5GB
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Save the user document
+        await db.collection(COLLECTIONS.USERS).doc(userId).set(userData);
+        console.log(`✅ User document created for ${userData.email}`);
       }
+
+      if (!userData.isActive) {
+        throw new Error('User account is inactive');
+      }
+
+      // Extract domain from user email
+      const userDomain = userData.domain || userData.email?.split('@')[1] || 'htresearchlab.com';
+      
+      console.log(`📧 Sending email from: ${userData.email} (Domain: ${userDomain})`);
+
+      // Check if domain has valid MX records (only htresearchlab.com is configured)
+      const validatedDomains = ['htresearchlab.com'];
+      const needsRelay = !validatedDomains.includes(userDomain);
+      
+      // Determine actual sender and reply-to
+      let fromAddress, replyToAddress;
+      if (needsRelay) {
+        // Use htresearchlab.com as sender for domains without MX records
+        fromAddress = `${userData.displayName || userData.email} via HTResearchLab <${process.env.SMTP_USER}>`;
+        replyToAddress = userData.email;
+        console.log(`⚠️ Domain ${userDomain} not validated - using relay with Reply-To: ${replyToAddress}`);
+      } else {
+        // Use actual user email for validated domains
+        fromAddress = `${userData.displayName || userData.email} <${userData.email}>`;
+        replyToAddress = userData.email;
+      }
+
+      // Get the appropriate transporter (always use htresearchlab.com for now)
+      const transporter = this.getTransporterForDomain('htresearchlab.com');
 
       // Prepare email options
       const mailOptions = {
-        from: `${userData.displayName} <${userData.email}>`,
+        from: fromAddress,
+        replyTo: replyToAddress,
         to: to.map(t => t.email).join(', '),
-        cc: cc?.map(c => c.email).join(', '),
-        bcc: bcc?.map(b => b.email).join(', '),
-        subject: subject,
-        html: body,
-        text: plainText || this.stripHtml(body),
-        inReplyTo: inReplyTo,
-        messageId: `<${uuidv4()}@${userData.domain}>`,
+        cc: cc?.map(c => c.email).join(', ') || '',
+        bcc: bcc?.map(b => b.email).join(', ') || '',
+        subject: subject || '(No Subject)',
+        html: body || '',
+        text: plainText || this.stripHtml(body) || '',
+        inReplyTo: inReplyTo || '',
+        messageId: `<${uuidv4()}@htresearchlab.com>`,
         attachments: []
       };
 
@@ -52,8 +149,10 @@ export class EmailService {
         mailOptions.attachments = await this.prepareAttachments(attachments);
       }
 
-      // Send email
-      const info = await this.transporter.sendMail(mailOptions);
+      // Send email using domain-specific transporter
+      console.log(`📤 Sending via SMTP: ${this.smtpConfigs[userDomain]?.host || 'default'}`);
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`✅ Email sent successfully! Message ID: ${info.messageId}`);
 
       // Store in sent folder
       const emailId = uuidv4();
@@ -61,15 +160,15 @@ export class EmailService {
         id: emailId,
         messageId: mailOptions.messageId,
         from: {
-          email: userData.email,
-          name: userData.displayName
+          email: userData.email || '',
+          name: userData.displayName || userData.email || ''
         },
         to: to,
         cc: cc || [],
         bcc: bcc || [],
-        subject: subject,
-        body: body,
-        plainText: plainText || this.stripHtml(body),
+        subject: subject || '(No Subject)',
+        body: body || '',
+        plainText: plainText || this.stripHtml(body) || '',
         attachments: attachments || [],
         folder: 'sent',
         isRead: true,
@@ -84,8 +183,8 @@ export class EmailService {
         smtpInfo: {
           messageId: info.messageId,
           response: info.response,
-          accepted: info.accepted,
-          rejected: info.rejected
+          accepted: info.accepted || [],
+          rejected: info.rejected || []
         }
       };
 
@@ -108,11 +207,20 @@ export class EmailService {
       
       const draftData = {
         id: emailId,
-        ...emailData,
+        to: emailData.to || [],
+        cc: emailData.cc || [],
+        bcc: emailData.bcc || [],
+        subject: emailData.subject || '(No Subject)',
+        body: emailData.body || '',
+        plainText: emailData.plainText || '',
+        attachments: emailData.attachments || [],
+        from: emailData.from || { email: '', name: '' },
         folder: 'drafts',
         isRead: false,
+        isStarred: false,
+        labels: [],
         userId: userId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: emailData.createdAt || admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       };
 
@@ -127,31 +235,51 @@ export class EmailService {
 
   async getEmails(userId, folder = 'inbox', options = {}) {
     try {
+      console.log(`🔍 Fetching emails - userId: ${userId}, folder: ${folder}`);
       const { limit = 50, offset = 0, searchQuery = '' } = options;
 
       let query = db.collection(COLLECTIONS.EMAILS)
-        .where('userId', '==', userId)
         .where('folder', '==', folder)
+        .where('userId', '==', userId)
         .orderBy('createdAt', 'desc')
-        .limit(limit)
-        .offset(offset);
+        .limit(limit);
+
+      if (offset > 0) {
+        query = query.offset(offset);
+      }
 
       const snapshot = await query.get();
       const emails = [];
 
       snapshot.forEach(doc => {
-        emails.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        // Convert Firestore timestamps to ISO strings
+        const emailData = {
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt
+        };
+        emails.push(emailData);
       });
 
+      console.log(`✅ Found ${emails.length} emails in ${folder} for user ${userId}`);
       return emails;
     } catch (error) {
-      console.error('Error getting emails:', error);
+      console.error('❌ Error getting emails:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        userId,
+        folder
+      });
       throw error;
     }
   }
 
   async getEmailById(emailId, userId) {
     try {
+      console.log(`🔍 Fetching email by ID: ${emailId} for user: ${userId}`);
       const emailDoc = await db.collection(COLLECTIONS.EMAILS).doc(emailId).get();
       
       if (!emailDoc.exists) {
@@ -165,9 +293,18 @@ export class EmailService {
         throw new Error('Unauthorized');
       }
 
-      return { id: emailDoc.id, ...emailData };
+      // Convert timestamps
+      const result = {
+        ...emailData,
+        id: emailDoc.id,
+        createdAt: emailData.createdAt?.toDate?.()?.toISOString() || emailData.createdAt,
+        updatedAt: emailData.updatedAt?.toDate?.()?.toISOString() || emailData.updatedAt
+      };
+
+      console.log(`✅ Email found: ${emailId}`);
+      return result;
     } catch (error) {
-      console.error('Error getting email:', error);
+      console.error('❌ Error getting email:', error);
       throw error;
     }
   }

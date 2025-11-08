@@ -8,7 +8,12 @@ export const COLLECTIONS = {
   DOMAINS: 'domains',
   ATTACHMENTS: 'attachments',
   EMAIL_QUEUE: 'emailQueue',
-  AUDIT_LOGS: 'auditLogs'
+  AUDIT_LOGS: 'auditLogs',
+  EMAIL_RULES: 'emailRules',
+  AUTO_REPLIES: 'autoReplies',
+  EVENTS: 'events',
+  TEMPLATES: 'templates',
+  SIGNATURES: 'signatures'
 };
 
 // Email Schema
@@ -95,4 +100,46 @@ export const AttachmentSchema = {
   size: 'number', // bytes
   storageUrl: 'string', // Firebase Storage URL
   createdAt: 'timestamp'
+};
+
+// Email Rule Schema
+export const EmailRuleSchema = {
+  id: 'string',
+  userId: 'string',
+  name: 'string',
+  isActive: 'boolean',
+  priority: 'number', // Lower number = higher priority
+  conditions: {
+    type: 'string', // 'all' or 'any'
+    rules: [
+      {
+        field: 'string', // 'from', 'to', 'subject', 'body', 'hasAttachment'
+        operator: 'string', // 'contains', 'equals', 'startsWith', 'endsWith', 'exists'
+        value: 'string'
+      }
+    ]
+  },
+  actions: [
+    {
+      type: 'string', // 'moveToFolder', 'addLabel', 'markAsRead', 'star', 'forward', 'delete'
+      value: 'string' // folder name, label name, email address, etc.
+    }
+  ],
+  createdAt: 'timestamp',
+  updatedAt: 'timestamp'
+};
+
+// Auto Reply Schema
+export const AutoReplySchema = {
+  id: 'string',
+  userId: 'string',
+  isActive: 'boolean',
+  subject: 'string',
+  message: 'string', // HTML content
+  startDate: 'timestamp',
+  endDate: 'timestamp',
+  sendOnlyOnce: 'boolean', // Send only once per sender
+  respondedTo: ['array of email addresses'],
+  createdAt: 'timestamp',
+  updatedAt: 'timestamp'
 };
